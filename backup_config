@@ -1,0 +1,8 @@
+webhook <url>
+every 6 hours
+#password noaccesslol
+
+# Script below is being executed in a temporary directory that is then zipped and sent in chunks
+
+#!/bin/bash
+echo "Hello, world!" > test-file
