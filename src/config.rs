@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::{fs, process::exit, time::Duration};
 
 use crate::hook::Webhook;
@@ -16,21 +17,38 @@ struct TimeColumn {
     pub time: Duration,
 }
 impl TimeColumn {
-    pub const fn new(aliases: &'static [&'static str],
-    time: Duration,) -> Self {
+    pub const fn new(aliases: &'static [&'static str], time: Duration) -> Self {
         Self { aliases, time }
     }
 }
 
 const TIME_TABLE: &[TimeColumn] = &[
-    TimeColumn::new(&["ms", "milisecond", "miliseconds", "millisecond", "milliseconds"], Duration::from_millis(1)),
+    TimeColumn::new(
+        &[
+            "ms",
+            "milisecond",
+            "miliseconds",
+            "millisecond",
+            "milliseconds",
+        ],
+        Duration::from_millis(1),
+    ),
     TimeColumn::new(&["s", "second", "seconds"], Duration::from_secs(1)),
     TimeColumn::new(&["m", "min", "minute", "minutes"], Duration::from_secs(60)),
     TimeColumn::new(&["h", "hour", "hours"], Duration::from_secs(60 * 60)),
     TimeColumn::new(&["d", "day", "days"], Duration::from_secs(60 * 60 * 24)),
-    TimeColumn::new(&["w", "week", "weeks"], Duration::from_secs(60 * 60 * 24 * 7)),
-    TimeColumn::new(&["n", "mon", "month", "months"], Duration::from_secs(2628288)),
-    TimeColumn::new(&["y", "year", "years"], Duration::from_secs(60 * 60 * 24 * 365 + 60 * 60 * 24 * 6)),
+    TimeColumn::new(
+        &["w", "week", "weeks"],
+        Duration::from_secs(60 * 60 * 24 * 7),
+    ),
+    TimeColumn::new(
+        &["n", "mon", "month", "months"],
+        Duration::from_secs(2628288),
+    ),
+    TimeColumn::new(
+        &["y", "year", "years"],
+        Duration::from_secs(60 * 60 * 24 * 365 + 60 * 60 * 24 * 6),
+    ),
 ];
 
 pub fn parse_args() -> Config {
@@ -88,7 +106,10 @@ pub fn parse_args() -> Config {
         }
 
         if x.starts_with("password ") {
-            if password.replace(x.split_once(' ').unwrap().1.to_string()).is_some() {
+            if password
+                .replace(x.split_once(' ').unwrap().1.to_string())
+                .is_some()
+            {
                 eprintln!("{exe}: cannot set multiple passwords");
                 exit(-1);
             }
@@ -96,7 +117,10 @@ pub fn parse_args() -> Config {
         }
 
         if x.starts_with("webhook ") {
-            if webhook.replace(Webhook::new(x.split_once(' ').unwrap().1.to_string())).is_some() {
+            if webhook
+                .replace(Webhook::new(x.split_once(' ').unwrap().1.to_string()))
+                .is_some()
+            {
                 eprintln!("{exe}: cannot send to multiple webhooks");
                 exit(-1);
             }
@@ -112,7 +136,7 @@ pub fn parse_args() -> Config {
             let d = delay.as_mut().unwrap();
             let mut iter = x.split(' ').skip(1);
             while let Some(x) = iter.next() {
-                if let Some(value) = x.parse().ok() {
+                if let Ok(value) = x.parse() {
                     let Some(unit) = iter.next() else {
                         eprintln!("{exe}: failed to parse duration: unit is not specified");
                         exit(-1);
@@ -134,14 +158,15 @@ pub fn parse_args() -> Config {
                             eprintln!("{exe}: failed to parse duration: invalid time");
                             exit(-1);
                         };
-                    
-                        let Some(unit) = TIME_TABLE.iter().find(|x| x.aliases.contains(&unit)) else {
+
+                        let Some(unit) = TIME_TABLE.iter().find(|x| x.aliases.contains(&unit))
+                        else {
                             eprintln!("{exe}: failed to parse duration: unknown unit '{unit}'");
                             exit(-1);
                         };
-                    
+
                         *d += unit.time * value;
-                    
+
                         continue;
                     }
                 }
@@ -159,7 +184,12 @@ pub fn parse_args() -> Config {
         exit(-1);
     }
 
-    let shellstr = match lines.next().and_then(|x| x.trim().strip_prefix("#!")).map(|x| x.trim()).and_then(|x| if x.is_empty() { None } else { Some(x) }) {
+    let shellstr = match lines
+        .next()
+        .and_then(|x| x.trim().strip_prefix("#!"))
+        .map(|x| x.trim())
+        .and_then(|x| if x.is_empty() { None } else { Some(x) })
+    {
         Some(x) => x,
         None => {
             eprintln!("{exe}: failed to parse config: no shell specified");
@@ -169,7 +199,10 @@ pub fn parse_args() -> Config {
 
     let shell: Vec<String> = shellstr.split(' ').map(|x| x.to_owned()).collect();
 
-    let script: String = lines.map(|x| format!("{x}\n")).collect();
+    let script = lines.fold(String::new(), |mut acc, x| {
+        writeln!(acc, "{x}").expect("Failed to write to string");
+        acc
+    });
 
     Config {
         webhook: match webhook {

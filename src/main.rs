@@ -1,11 +1,17 @@
-use std::{fs::{self, File}, io::{Read, Write}, ops::{Deref, DerefMut}, path::PathBuf, process::{Command, Stdio}};
+use std::{
+    fs::{self, File},
+    io::{Read, Write},
+    ops::{Deref, DerefMut},
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use config::parse_args;
 use temp::temp_path;
 use zip::{write::SimpleFileOptions, ZipWriter};
 
-pub mod hook;
 pub mod config;
+pub mod hook;
 pub mod temp;
 
 struct Defer<T, G, F: Fn(&mut T) -> G>(T, F);
@@ -56,7 +62,9 @@ fn main() {
 
         println!("Trying to initiate a backup...");
 
-        let mut head = config.webhook.send(|x| x.content("Starting backup process..."));
+        let mut head = config
+            .webhook
+            .send(|x| x.content("Starting backup process..."));
 
         let dir = Defer::new(temp_path(), |x| fs::remove_dir_all(x));
         if let Err(why) = fs::create_dir(&*dir) {
@@ -72,8 +80,14 @@ fn main() {
         }
 
         let mut iter = config.shell.iter();
-        let mut proc = match Command::new(iter.next().unwrap()).args(iter).arg(&*script).stdout(Stdio::inherit()).stderr(Stdio::inherit())
-        .current_dir(&*dir).spawn() {
+        let mut proc = match Command::new(iter.next().unwrap())
+            .args(iter)
+            .arg(&*script)
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .current_dir(&*dir)
+            .spawn()
+        {
             Ok(x) => x,
             Err(why) => {
                 println!("Failed to spawn child process: {why}");
@@ -85,11 +99,13 @@ fn main() {
         head.edit(&config.webhook, "Backing up data...");
 
         match proc.wait() {
-            Ok(x) => if !x.success() {
-                println!("Backup process failed: exited with non-zero error code");
-                head.edit(&config.webhook, "Backup process failed");
-                continue;
-            },
+            Ok(x) => {
+                if !x.success() {
+                    println!("Backup process failed: exited with non-zero error code");
+                    head.edit(&config.webhook, "Backup process failed");
+                    continue;
+                }
+            }
             Err(why) => {
                 println!("Backup process failed: {why}");
                 head.edit(&config.webhook, "Backup process failed");
@@ -111,13 +127,18 @@ fn main() {
 
         head.edit(&config.webhook, "Compressing the archive...");
 
-        fn walk(path: PathBuf, name: String, zip: &mut ZipWriter<File>, options: SimpleFileOptions) {
+        fn walk(
+            path: PathBuf,
+            name: String,
+            zip: &mut ZipWriter<File>,
+            options: SimpleFileOptions,
+        ) {
             for x in match fs::read_dir(path) {
                 Ok(x) => x,
                 Err(why) => {
                     println!("readdir() failed: {why}");
                     return;
-                },
+                }
             } {
                 let x = match x {
                     Ok(x) => x,
@@ -136,11 +157,14 @@ fn main() {
                 };
 
                 if metadata.is_file() {
-                    if let Err(why) = zip.start_file(format!("{name}/{}", x.file_name().into_string().unwrap()).trim_start_matches('/'), options.clone()
-                        .large_file(metadata.len() >= 1024 * 1024 * 1024 * 4)) {
-                            println!("Failed to start zip header: {why}");
-                            return;
-                        }
+                    if let Err(why) = zip.start_file(
+                        format!("{name}/{}", x.file_name().into_string().unwrap())
+                            .trim_start_matches('/'),
+                        options.large_file(metadata.len() >= 1024 * 1024 * 1024 * 4),
+                    ) {
+                        println!("Failed to start zip header: {why}");
+                        return;
+                    }
 
                     let mut buffer = vec![0; 8192];
                     let mut file = match File::open(x.path()) {
@@ -153,12 +177,14 @@ fn main() {
 
                     loop {
                         match file.read(&mut buffer) {
-                            Ok(x) => if x == 0 {
-                                break;
-                            } else if let Err(why) = zip.write_all(&buffer[0..x]) {
-                                println!("write() failed: {why}");
-                                return;
-                            },
+                            Ok(x) => {
+                                if x == 0 {
+                                    break;
+                                } else if let Err(why) = zip.write_all(&buffer[0..x]) {
+                                    println!("write() failed: {why}");
+                                    return;
+                                }
+                            }
                             Err(why) => {
                                 println!("read() failed: {why}");
                                 return;
@@ -166,11 +192,21 @@ fn main() {
                         }
                     }
                 } else {
-                    if let Err(why) = zip.add_directory(name.clone(), SimpleFileOptions::default().compression_level(Some(10))) {
+                    if let Err(why) = zip.add_directory(
+                        name.clone(),
+                        SimpleFileOptions::default().compression_level(Some(10)),
+                    ) {
                         println!("Failed to add directory: {why}");
                         return;
                     }
-                    walk(x.path(), format!("{name}/{}", x.file_name().into_string().unwrap()).trim_start_matches('/').to_string(), zip, options);
+                    walk(
+                        x.path(),
+                        format!("{name}/{}", x.file_name().into_string().unwrap())
+                            .trim_start_matches('/')
+                            .to_string(),
+                        zip,
+                        options,
+                    );
                 }
             }
         }
@@ -180,8 +216,7 @@ fn main() {
                 .compression_method(zip::CompressionMethod::Deflated);
 
             if let Some(x) = &config.password {
-                options
-                    .with_aes_encryption(zip::AesMode::Aes256, x)
+                options.with_aes_encryption(zip::AesMode::Aes256, x)
             } else {
                 options
             }
@@ -208,7 +243,7 @@ fn main() {
         let mut buffer = vec![0u8; CHUNK_SIZE];
         let mut chunks = 0u32;
 
-        head.edit(&config.webhook, format!("Publishing artifact..."));
+        head.edit(&config.webhook, "Publishing artifact...");
 
         loop {
             chunks += 1;
@@ -234,7 +269,9 @@ fn main() {
             }
 
             if ptr == CHUNK_SIZE || end {
-                head.reply(&config.webhook, move |x| x.file(format!("chunk_{chunks}.zip"), buffer[0..ptr].to_vec()));
+                head.reply(&config.webhook, move |x| {
+                    x.file(format!("chunk_{chunks}.zip"), buffer[0..ptr].to_vec())
+                });
                 break;
             }
         }
