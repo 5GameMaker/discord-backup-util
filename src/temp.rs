@@ -9,5 +9,5 @@ pub fn temp_path() -> PathBuf {
         .take(32)
         .collect();
 
-    PathBuf::from_str(&format!("/tmp/{name}")).unwrap()
+    PathBuf::from_str(&format!("/tmp/discord-backup-util.{name}")).unwrap()
 }

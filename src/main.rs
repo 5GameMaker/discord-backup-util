@@ -191,14 +191,10 @@ fn main() {
                             }
                         }
                     }
+
+                    println!("Added file {}", format!("{name}/{}", x.file_name().into_string().unwrap())
+                            .trim_start_matches('/'));
                 } else {
-                    if let Err(why) = zip.add_directory(
-                        name.clone(),
-                        SimpleFileOptions::default().compression_level(Some(10)),
-                    ) {
-                        println!("Failed to add directory: {why}");
-                        return;
-                    }
                     walk(
                         x.path(),
                         format!("{name}/{}", x.file_name().into_string().unwrap())
@@ -212,7 +208,7 @@ fn main() {
         }
         walk(dir.clone(), String::new(), &mut zip, {
             let options = SimpleFileOptions::default()
-                .compression_level(Some(10))
+                .compression_level(Some(config.compression_level))
                 .compression_method(zip::CompressionMethod::Deflated);
 
             if let Some(x) = &config.password {

@@ -10,6 +10,7 @@ pub struct Config {
     pub shell: Vec<String>,
     pub delay: Duration,
     pub password: Option<String>,
+    pub compression_level: i64,
 }
 
 struct TimeColumn {
@@ -91,6 +92,7 @@ pub fn parse_args() -> Config {
     let mut webhook = None;
     let mut delay = None;
     let mut password = None;
+    let mut compression = None;
 
     while let Some(x) = lines.peek() {
         let x = x.trim();
@@ -114,6 +116,22 @@ pub fn parse_args() -> Config {
                 exit(-1);
             }
             continue;
+        }
+
+        if x.starts_with("compression ") {
+            if let Ok(value) = x.split_once(' ').unwrap().1.parse::<i64>() {
+            if compression 
+                .replace(value)
+                .is_some()
+            {
+                eprintln!("{exe}: cannot set multiple compression levels");
+                exit(-1);
+            }
+            continue;
+            } else {
+                eprintln!("{exe}: invalid compression value");
+                exit(-1);
+            }
         }
 
         if x.starts_with("webhook ") {
@@ -219,6 +237,7 @@ pub fn parse_args() -> Config {
                 exit(-1);
             }
         },
+        compression_level: compression.unwrap_or(10),
         shell,
         script,
         password,

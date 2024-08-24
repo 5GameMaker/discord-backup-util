@@ -6,15 +6,6 @@ use serde::Deserialize;
 #[derive(Default)]
 pub struct MessageBuilder(Message);
 impl MessageBuilder {
-    pub fn reply(mut self, to: NonZeroU64) -> Self {
-        self.0.reply.replace(to);
-        self
-    }
-    pub fn reply_maybe(mut self, to: Option<NonZeroU64>) -> Self {
-        self.0.reply = to;
-        self
-    }
-
     pub fn content(mut self, content: impl Into<String>) -> Self {
         self.0.content.replace(content.into());
         self
@@ -33,7 +24,6 @@ impl MessageBuilder {
 #[derive(Default)]
 pub struct Message {
     pub id: Option<NonZeroU64>,
-    pub reply: Option<NonZeroU64>,
     pub content: Option<String>,
     pub files: Vec<(String, Vec<u8>)>,
 }
@@ -65,7 +55,7 @@ impl Message {
         hook: &Webhook,
         message: impl Fn(MessageBuilder) -> MessageBuilder,
     ) -> Message {
-        hook.send(|x| message(x.reply(self.id.expect("Replying to a message that was never sent"))))
+        hook.send(message)
     }
 }
 
