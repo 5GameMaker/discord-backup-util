@@ -27,3 +27,11 @@ to some C packages failing to compile.
 If build fails due to dependencies, add `--no-default-features --features minreq` to command line
 (This may take longer to compile as for `minreq` we use bundled OpenSSL instead of RusTLS) (Not all
 targets can be fixed this way).
+
+## Windows
+
+We never needed to use this on Windows, so we don't guarantee that any Windows build will even launch.
+
+## Features policy
+
+If a feature is not too insane, feel free to submit a [feature request](https://github.com/5GameMaker/discord-backup-util/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=feature%3A+This+one%21).
