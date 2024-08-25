@@ -3,6 +3,8 @@ use std::{num::NonZeroU64, ops::Add, time::Duration};
 use rand::Rng;
 use serde::Deserialize;
 
+use crate::log::Logger;
+
 #[derive(Default)]
 pub struct MessageBuilder(Message);
 impl MessageBuilder {
@@ -10,11 +12,6 @@ impl MessageBuilder {
         self.0.content.replace(content.into());
         self
     }
-    pub fn content_maybe(mut self, content: Option<impl Into<String>>) -> Self {
-        self.0.content = content.map(|x| x.into());
-        self
-    }
-
     pub fn file(mut self, name: impl Into<String>, file: Vec<u8>) -> Self {
         self.0.files.push((name.into(), file));
         self
@@ -28,7 +25,7 @@ pub struct Message {
     pub files: Vec<(String, Vec<u8>)>,
 }
 impl Message {
-    pub fn edit(&mut self, hook: &Webhook, text: impl Into<String>) {
+    pub fn edit<L: Logger>(&mut self, hook: &Webhook, text: impl Into<String>, logger: &mut L) {
         let text: String = text.into();
 
         let Some(id) = self.id else {
@@ -38,24 +35,43 @@ impl Message {
         let body = format!("{{\"content\":{text:?}}}");
         self.content.replace(text);
 
+        #[allow(clippy::blocks_in_conditions)]
         loop {
-            if ureq::patch(&format!("{}/messages/{id}", hook.0))
-                .set("Content-Type", "application/json")
-                .set("Content-Length", &body.len().to_string())
-                .send_string(&body)
-                .is_ok()
-            {
+            if {
+                #[cfg(feature = "minreq")]
+                {
+                    let body = body.clone();
+                    minreq::patch(format!("{}/messages/{id}", hook.0))
+                        .with_header("Content-Type", "application/json")
+                        .with_header("Content-Length", body.len().to_string())
+                        .with_body(body)
+                        .send()
+                        .is_ok()
+                }
+                #[cfg(feature = "ureq")]
+                {
+                    ureq::patch(&format!("{}/messages/{id}", hook.0))
+                        .set("Content-Type", "application/json")
+                        .set("Content-Length", &body.len().to_string())
+                        .send_string(&body)
+                        .is_ok()
+                }
+            } {
                 break;
             }
+
+            logger.info("Failed to edit message, retrying in 10 seconds..");
+            std::thread::sleep(Duration::from_secs(10));
         }
     }
 
-    pub fn reply(
+    pub fn reply<L: Logger>(
         &self,
         hook: &Webhook,
         message: impl Fn(MessageBuilder) -> MessageBuilder,
+        logger: &mut L,
     ) -> Message {
-        hook.send(message)
+        hook.send(message, logger)
     }
 }
 
@@ -74,7 +90,7 @@ impl Webhook {
     /// Send a message.
     ///
     /// Will try indefinitely until success.
-    pub fn send(&self, message: impl Fn(MessageBuilder) -> MessageBuilder) -> Message {
+    pub fn send<L: Logger>(&self, message: impl Fn(MessageBuilder) -> MessageBuilder, logger: &mut L) -> Message {
         let mut message: Message = message(Default::default()).0;
 
         let mut bodies: Vec<Vec<u8>> = vec![];
@@ -127,17 +143,43 @@ impl Webhook {
             body[ptr..ptr + header.len()].copy_from_slice(&header);
         }
 
+        #[allow(clippy::blocks_in_conditions)]
         loop {
-            match ureq::post(&format!("{}?wait=true", self.0))
-                .set(
-                    "Content-Type",
-                    &format!("multipart/form-data; boundary={boundary}"),
-                )
-                .set("Content-Length", &body.len().to_string())
-                .send_bytes(&body)
-            {
+            match {
+                #[cfg(feature = "minreq")]
+                {
+                    let body = body.clone();
+                    minreq::post(format!("{}?wait=true", self.0))
+                        .with_header(
+                            "Content-Type",
+                            format!("multipart/form-data; boundary={boundary}"),
+                        )
+                        .with_header("Content-Length", body.len().to_string())
+                        .with_body(body)
+                        .send()
+                }
+                #[cfg(feature = "ureq")]
+                {
+                    ureq::post(&format!("{}?wait=true", self.0))
+                        .set(
+                            "Content-Type",
+                            &format!("multipart/form-data; boundary={boundary}"),
+                        )
+                        .set("Content-Length", &body.len().to_string())
+                        .send_bytes(&body)
+                }
+            } {
                 Ok(x) => {
-                    let parsed: ApiMessage = match serde_json::from_reader(x.into_reader()) {
+                    let parsed: ApiMessage = match serde_json::from_reader({
+                        #[cfg(feature = "ureq")]
+                        {
+                            x.into_reader()
+                        }
+                        #[cfg(feature = "minreq")]
+                        {
+                            std::io::Cursor::new(x.as_bytes())
+                        }
+                    }) {
                         Ok(x) => x,
                         Err(why) => {
                             println!("Failed to parse message, retrying in 5 minutes...\n\n{why}");
@@ -151,7 +193,7 @@ impl Webhook {
                     break message;
                 }
                 Err(why) => {
-                    println!("Error sending request: {why}, retrying in 1 minute...");
+                    logger.error(&format!("Error sending request: {why}, retrying in 1 minute..."));
                     std::thread::sleep(Duration::from_secs(60));
                 }
             }
