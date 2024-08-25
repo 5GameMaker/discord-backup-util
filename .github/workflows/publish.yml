@@ -75,7 +75,7 @@ jobs:
            cp target/i686-pc-windows-gnu/release/discord-backup-util.exe
               target/github-release/discord-backup-util.i686-pc-windows-gnu.exe
 
-    - uses: 5GameMaker/crate-version@c1672654ea26c815a187066de39d91d97e174685
+    - uses: 5GameMaker/crate-version@f851e13c7f1b682bb33ccde2a9cd50539edce996
       id: crate-version
 
     - uses: ncipollo/release-action@v1
