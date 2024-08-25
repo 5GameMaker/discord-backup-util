@@ -1,0 +1,61 @@
+name: Publish
+
+on:
+  push:
+    branches: [ "stable" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: ningenMe/setup-rustup@v1.1.0
+
+    - name: Create release dir
+      run: rm -fr target/github-release && mkdir -p target/github-release
+    
+    - name: Install x86_64-unknown-linux-gnu toolchain
+      run: rustup target add x86_64-unknown-linux-gnu
+    - name: Build for x86_64-unknown-linux-gnu
+      run: cargo build --verbose --release --target x86_64-unknown-linux-gnu
+    - name: Copy x86_64-unknown-linux-gnu artifact
+      run: cp target/x86_64-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.x86_64-unknown-linux-gnu
+      
+    - name: Install x86_64-unknown-linux-musl toolchain
+      run: rustup target add x86_64-unknown-linux-musl
+    - name: Build for x86_64-unknown-linux-gnu
+      run: cargo build --verbose --release --target x86_64-unknown-linux-musl
+    - name: Copy x86_64-unknown-linux-musl artifact
+      run: cp target/x86_64-unknown-linux-musl/release/discord-backup-util target/github-release/discord-backup-util.x86_64-unknown-linux-musl
+      
+    - name: Install i586-unknown-linux-gnu toolchain
+      run: rustup target add i586-unknown-linux-gnu
+    - name: Build for add i586-unknown-linux-gnu
+      run: cargo build --verbose --release --target add i586-unknown-linux-gnu
+    - name: Copy i586-unknown-linux-gnu artifact
+      run: cp target/i586-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-gnu
+      
+    - name: Install i586-unknown-linux-musl toolchain
+      run: rustup target add i586-unknown-linux-musl
+    - name: Build for add i586-unknown-linux-musl
+      run: cargo build --verbose --release --target add i586-unknown-linux-musl
+    - name: Copy i586-unknown-linux-musl artifact
+      run: cp target/i586-unknown-linux-musl/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-musl
+      
+    - uses: colathro/crate-version@1.0.0
+      id: crate-version
+      with:
+        file: Cargo.toml
+    - uses: ncipollo/release-action@v1
+      with:
+        tag: v${{ steps.crate-version.outputs.version }}
+        artifacts: "target/github-release/*"
+        commit: stable
+        generateReleaseNotes: true
