@@ -192,21 +192,25 @@ impl Webhook {
                                         std::thread::sleep(Duration::from_secs(300));
                                         continue;
                                     }
-                                }
+                                },
                                 x => {
                                     logger.error(&format!("Received invalid json, retrying in 5 minutes\n\nExpected object, found {x:?}"));
                                     std::thread::sleep(Duration::from_secs(300));
                                     continue;
                                 }
-                            }
+                            },
                             Err(why) => {
-                                logger.error(&format!("Failed to parse json, retrying in 5 minutes...\n\n{why}"));
+                                logger.error(&format!(
+                                    "Failed to parse json, retrying in 5 minutes...\n\n{why}"
+                                ));
                                 std::thread::sleep(Duration::from_secs(300));
                                 continue;
                             }
                         },
                         Err(why) => {
-                            logger.error(&format!("Failed to parse message, retrying in 5 minutes...\n\n{why}"));
+                            logger.error(&format!(
+                                "Failed to parse message, retrying in 5 minutes...\n\n{why}"
+                            ));
                             std::thread::sleep(Duration::from_secs(300));
                             continue;
                         }
