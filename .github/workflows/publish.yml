@@ -60,17 +60,17 @@ jobs:
            cp target/x86_64-pc-windows-msvc/release/discord-backup-util.exe
               target/github-release/discord-backup-util.x86_64-pc-windows-msvc.exe
 
-    - name: Build for x86_64-pc-windows-gnu
-      run: rustup target add x86_64-pc-windows-gnu &&
-           cargo build --verbose --release --target x86_64-pc-windows-gnu &&
-           cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe
-              target/github-release/discord-backup-util.x86_64-pc-windows-gnu.exe
-
     - name: Build for i686-pc-windows-gnu
       run: rustup target add i686-pc-windows-gnu &&
            cargo build --verbose --release --target i686-pc-windows-gnu &&
            cp target/i686-pc-windows-gnu/release/discord-backup-util.exe
               target/github-release/discord-backup-util.i686-pc-windows-gnu.exe
+
+    - name: Build for i686-pc-windows-msvc
+      run: rustup target add i686-pc-windows-msvc &&
+           cargo xwin build --verbose --release --target i686-pc-windows-msvc &&
+           cp target/i686-pc-windows-msvc/release/discord-backup-util.exe
+              target/github-release/discord-backup-util.i686-pc-windows-msvc.exe
 
     - uses: 5GameMaker/crate-version@dfc9d2a7ac4d6250f460c5270266e697edba6e7f
       id: crate-version
