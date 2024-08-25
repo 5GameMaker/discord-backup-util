@@ -41,15 +41,15 @@ jobs:
       
     - name: Install i586-unknown-linux-gnu toolchain
       run: rustup target add i586-unknown-linux-gnu
-    - name: Build for add i586-unknown-linux-gnu
-      run: cargo build --verbose --release --target add i586-unknown-linux-gnu
+    - name: Build for i586-unknown-linux-gnu
+      run: cargo build --verbose --release --target i586-unknown-linux-gnu
     - name: Copy i586-unknown-linux-gnu artifact
       run: cp target/i586-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-gnu
       
     - name: Install i586-unknown-linux-musl toolchain
       run: rustup target add i586-unknown-linux-musl
-    - name: Build for add i586-unknown-linux-musl
-      run: cargo build --verbose --release --target add i586-unknown-linux-musl
+    - name: Build for i586-unknown-linux-musl
+      run: cargo build --verbose --release --target i586-unknown-linux-musl
     - name: Copy i586-unknown-linux-musl artifact
       run: cp target/i586-unknown-linux-musl/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-musl
       
