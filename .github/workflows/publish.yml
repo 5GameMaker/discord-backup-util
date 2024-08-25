@@ -42,16 +42,16 @@ jobs:
     - name: Install i586-unknown-linux-gnu toolchain
       run: rustup target add i586-unknown-linux-gnu
     - name: Build for i586-unknown-linux-gnu
-      run: cargo build --verbose --release --target i586-unknown-linux-gnu
+      run: cargo build --verbose --release --target i586-unknown-linux-gnu --no-default-features --features minreq
     - name: Copy i586-unknown-linux-gnu artifact
       run: cp target/i586-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-gnu
       
-    - name: Install i586-unknown-linux-musl toolchain
-      run: rustup target add i586-unknown-linux-musl
-    - name: Build for i586-unknown-linux-musl
-      run: cargo build --verbose --release --target i586-unknown-linux-musl
-    - name: Copy i586-unknown-linux-musl artifact
-      run: cp target/i586-unknown-linux-musl/release/discord-backup-util target/github-release/discord-backup-util.i586-unknown-linux-musl
+    - name: Install i686-unknown-linux-gnu toolchain
+      run: rustup target add i686-unknown-linux-gnu
+    - name: Build for i686-unknown-linux-gnu
+      run: cargo build --verbose --release --target i686-unknown-linux-gnu
+    - name: Copy i686-unknown-linux-gnu artifact
+      run: cp target/i686-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.i686-unknown-linux-gnu
       
     - uses: colathro/crate-version@1.0.0
       id: crate-version
