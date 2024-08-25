@@ -19,8 +19,9 @@ jobs:
     - uses: ningenMe/setup-rustup@v1.1.0
     - uses: awalsh128/cache-apt-pkgs-action@v1
       with:
-        packages: musl-tools gcc-multilib
+        packages: musl-tools mold gcc-mingw-w64
         version: 1.0
+    - run: cargo install cargo-xwin --locked
 
     - name: Create release dir
       run: rm -fr target/github-release && mkdir -p target/github-release
@@ -52,6 +53,20 @@ jobs:
       run: cargo build --verbose --release --target i686-unknown-linux-gnu
     - name: Copy i686-unknown-linux-gnu artifact
       run: cp target/i686-unknown-linux-gnu/release/discord-backup-util target/github-release/discord-backup-util.i686-unknown-linux-gnu
+
+    - name: Install x86_64-pc-windows-gnu toolchain
+      run: rustup target add x86_64-pc-windows-gnu
+    - name: Build for x86_64-pc-windows-gnu
+      run: cargo build --verbose --release --target x86_64-pc-windows-gnu
+    - name: Copy x86_64-pc-windows-gnu artifact
+      run: cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe target/github-release/discord-backup-util.x86_64-pc-windows-gnu.exe
+
+    - name: Install x86_64-pc-windows-msvc toolchain
+      run: rustup target add x86_64-pc-windows-msvc
+    - name: Build for x86_64-pc-windows-msvc
+      run: cargo xwin build --verbose --release --target x86_64-pc-windows-msvc
+    - name: Copy x86_64-pc-windows-msvc artifact
+      run: cp target/x86_64-pc-windows-msvc/release/discord-backup-util.exe target/github-release/discord-backup-util.x86_64-pc-windows-msvc.exe
       
     - uses: colathro/crate-version@1.0.0
       id: crate-version

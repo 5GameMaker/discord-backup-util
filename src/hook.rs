@@ -1,7 +1,7 @@
 use std::{num::NonZeroU64, ops::Add, time::Duration};
 
 use rand::Rng;
-use serde::Deserialize;
+use tinyjson::JsonValue;
 
 use crate::log::Logger;
 
@@ -75,7 +75,6 @@ impl Message {
     }
 }
 
-#[derive(Deserialize)]
 struct ApiMessage {
     id: String,
 }
@@ -174,19 +173,44 @@ impl Webhook {
                 }
             } {
                 Ok(x) => {
-                    let parsed: ApiMessage = match serde_json::from_reader({
+                    let parsed: ApiMessage = match {
                         #[cfg(feature = "ureq")]
                         {
-                            x.into_reader()
+                            x.into_string()
                         }
                         #[cfg(feature = "minreq")]
                         {
-                            std::io::Cursor::new(x.as_bytes())
+                            x.as_str()
                         }
-                    }) {
-                        Ok(x) => x,
+                    } {
+                        Ok(x) => match x.parse::<JsonValue>() {
+                            Ok(x) => match x {
+                                JsonValue::Object(x) => match x.get("id") {
+                                    Some(JsonValue::String(x)) => ApiMessage { id: x.to_owned() },
+                                    x => {
+                                        logger.error(&format!("Received invalid json, retrying in 5 minutes\n\nExpected string, found {x:?}"));
+                                        std::thread::sleep(Duration::from_secs(300));
+                                        continue;
+                                    }
+                                },
+                                x => {
+                                    logger.error(&format!("Received invalid json, retrying in 5 minutes\n\nExpected object, found {x:?}"));
+                                    std::thread::sleep(Duration::from_secs(300));
+                                    continue;
+                                }
+                            },
+                            Err(why) => {
+                                logger.error(&format!(
+                                    "Failed to parse json, retrying in 5 minutes...\n\n{why}"
+                                ));
+                                std::thread::sleep(Duration::from_secs(300));
+                                continue;
+                            }
+                        },
                         Err(why) => {
-                            println!("Failed to parse message, retrying in 5 minutes...\n\n{why}");
+                            logger.error(&format!(
+                                "Failed to parse message, retrying in 5 minutes...\n\n{why}"
+                            ));
                             std::thread::sleep(Duration::from_secs(300));
                             continue;
                         }

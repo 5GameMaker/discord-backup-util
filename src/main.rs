@@ -6,6 +6,8 @@ use upload::upload;
 
 #[cfg(not(any(feature = "ureq", feature = "minreq")))]
 compile_error!("Either 'ureq' or 'minreq' feature must be enabled");
+#[cfg(all(feature = "ureq", feature = "minreq"))]
+compile_error!("Cannot enable both 'ureq' and 'minreq' features");
 
 mod config;
 mod hook;

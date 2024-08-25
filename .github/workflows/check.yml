@@ -11,10 +11,13 @@ env:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
+    - uses: awalsh128/cache-apt-pkgs-action@v1
+      with:
+        packages: mold
+        version: 1.0
     - uses: actions/checkout@v4
     - name: Build
       run: cargo build --verbose
