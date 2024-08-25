@@ -1,6 +1,6 @@
 [package]
 name = "discord-backup-util"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["buj"]
 license = "AGPL3-or-later"
 description = "A tiny tool to backup stuff to Discord"
