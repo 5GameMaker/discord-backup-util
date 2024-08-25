@@ -12,7 +12,7 @@ categories = ["command-line-utilities"]
 edition = "2021"
 
 [features]
-default = ["minreq"]
+default = ["ureq"]
 minreq = ["dep:minreq"]
 ureq = ["dep:ureq"]
 

@@ -1,4 +1,5 @@
 /target
+/.xwin
 
 # local config for testing
 /.backup_config
