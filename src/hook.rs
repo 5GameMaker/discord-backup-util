@@ -90,7 +90,11 @@ impl Webhook {
     /// Send a message.
     ///
     /// Will try indefinitely until success.
-    pub fn send<L: Logger>(&self, message: impl Fn(MessageBuilder) -> MessageBuilder, logger: &mut L) -> Message {
+    pub fn send<L: Logger>(
+        &self,
+        message: impl Fn(MessageBuilder) -> MessageBuilder,
+        logger: &mut L,
+    ) -> Message {
         let mut message: Message = message(Default::default()).0;
 
         let mut bodies: Vec<Vec<u8>> = vec![];
@@ -193,7 +197,9 @@ impl Webhook {
                     break message;
                 }
                 Err(why) => {
-                    logger.error(&format!("Error sending request: {why}, retrying in 1 minute..."));
+                    logger.error(&format!(
+                        "Error sending request: {why}, retrying in 1 minute..."
+                    ));
                     std::thread::sleep(Duration::from_secs(60));
                 }
             }
