@@ -28,51 +28,51 @@ jobs:
       run: rm -fr target/github-release && mkdir -p target/github-release
 
     - name: Build for x86_64-unknown-linux-gnu
-      run: rustup target add x86_64-unknown-linux-gnu
-           cargo build --verbose --release --target x86_64-unknown-linux-gnu
-           cp target/x86_64-unknown-linux-gnu/release/discord-backup-util \
+      run: rustup target add x86_64-unknown-linux-gnu &&
+           cargo build --verbose --release --target x86_64-unknown-linux-gnu &&
+           cp target/x86_64-unknown-linux-gnu/release/discord-backup-util
               target/github-release/discord-backup-util.x86_64-unknown-linux-gnu
 
     - name: Build for x86_64-unknown-linux-gnu
-      run: rustup target add x86_64-unknown-linux-musl
-           cargo build --verbose --release --target x86_64-unknown-linux-musl
-           cp target/x86_64-unknown-linux-musl/release/discord-backup-util \
+      run: rustup target add x86_64-unknown-linux-musl &&
+           cargo build --verbose --release --target x86_64-unknown-linux-musl &&
+           cp target/x86_64-unknown-linux-musl/release/discord-backup-util
               target/github-release/discord-backup-util.x86_64-unknown-linux-musl
 
     - name: Build for i586-unknown-linux-gnu
-      run: rustup target add i586-unknown-linux-gnu
-           cargo build --verbose --release --target i586-unknown-linux-gnu --no-default-features --features minreq
-           cp target/i586-unknown-linux-gnu/release/discord-backup-util \
+      run: rustup target add i586-unknown-linux-gnu &&
+           cargo build --verbose --release --target i586-unknown-linux-gnu --no-default-features --features minreq &&
+           cp target/i586-unknown-linux-gnu/release/discord-backup-util
               target/github-release/discord-backup-util.i586-unknown-linux-gnu
 
     - name: Build for i686-unknown-linux-gnu
-      run: rustup target add i686-unknown-linux-gnu
-           cargo build --verbose --release --target i686-unknown-linux-gnu
-           cp target/i686-unknown-linux-gnu/release/discord-backup-util \
+      run: rustup target add i686-unknown-linux-gnu &&
+           cargo build --verbose --release --target i686-unknown-linux-gnu &&
+           cp target/i686-unknown-linux-gnu/release/discord-backup-util
               target/github-release/discord-backup-util.i686-unknown-linux-gnu
 
     - name: Build for x86_64-pc-windows-gnu
-      run: rustup target add x86_64-pc-windows-gnu
-           cargo build --verbose --release --target x86_64-pc-windows-gnu
-           cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe \
+      run: rustup target add x86_64-pc-windows-gnu &&
+           cargo build --verbose --release --target x86_64-pc-windows-gnu &&
+           cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe
               target/github-release/discord-backup-util.x86_64-pc-windows-gnu.exe
 
     - name: Build for x86_64-pc-windows-msvc
-      run: rustup target add x86_64-pc-windows-msvc
-           cargo xwin build --verbose --release --target x86_64-pc-windows-msvc
-           cp target/x86_64-pc-windows-msvc/release/discord-backup-util.exe \
+      run: rustup target add x86_64-pc-windows-msvc &&
+           cargo xwin build --verbose --release --target x86_64-pc-windows-msvc &&
+           cp target/x86_64-pc-windows-msvc/release/discord-backup-util.exe
               target/github-release/discord-backup-util.x86_64-pc-windows-msvc.exe
 
     - name: Build for x86_64-pc-windows-gnu
-      run: rustup target add x86_64-pc-windows-gnu
-           cargo build --verbose --release --target x86_64-pc-windows-gnu
-           cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe \
+      run: rustup target add x86_64-pc-windows-gnu &&
+           cargo build --verbose --release --target x86_64-pc-windows-gnu &&
+           cp target/x86_64-pc-windows-gnu/release/discord-backup-util.exe
               target/github-release/discord-backup-util.x86_64-pc-windows-gnu.exe
 
     - name: Build for i686-pc-windows-gnu
-      run: rustup target add i686-pc-windows-gnu
-           cargo build --verbose --release --target i686-pc-windows-gnu
-           cp target/i686-pc-windows-gnu/release/discord-backup-util.exe \
+      run: rustup target add i686-pc-windows-gnu &&
+           cargo build --verbose --release --target i686-pc-windows-gnu &&
+           cp target/i686-pc-windows-gnu/release/discord-backup-util.exe
               target/github-release/discord-backup-util.i686-pc-windows-gnu.exe
 
     - uses: 5GameMaker/crate-version@c1672654ea26c815a187066de39d91d97e174685

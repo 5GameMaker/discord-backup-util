@@ -34,4 +34,8 @@ We never needed to use this on Windows, so we don't guarantee that any Windows b
 
 ## Features policy
 
-If a feature is not too insane, feel free to submit a [feature request](https://github.com/5GameMaker/discord-backup-util/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=feature%3A+This+one%21).
+If a feature is not too insane, feel free to submit a [feature request](https://github.com/5GameMaker/discord-backup-util/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.md&title=feature%3A+This+one%21). If you can actually work on a feautre, fork this repo and then submit a PR, although it'd be nice to open a FR first to see if your work is going to be accepted into the project.
+
+## Contributing
+
+Submit all PRs to `master` branch. PRs to `stable` will not be accepted.
