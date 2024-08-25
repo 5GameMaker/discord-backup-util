@@ -5,7 +5,7 @@ A tool that backs up whatever you need to Discord.
 ## Setup
 
 - Install
-> `$ cargo install --git https://github.com/5GameMaker/discord-backup-util.git`
+> `$ cargo install discord-backup-util`
 - Create `backup_config`:
 > `$ discord-backup-util --setup`
 - Adapt
