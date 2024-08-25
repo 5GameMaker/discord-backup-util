@@ -120,14 +120,11 @@ pub fn parse_args() -> Config {
 
         if x.starts_with("compression ") {
             if let Ok(value) = x.split_once(' ').unwrap().1.parse::<i64>() {
-            if compression 
-                .replace(value)
-                .is_some()
-            {
-                eprintln!("{exe}: cannot set multiple compression levels");
-                exit(-1);
-            }
-            continue;
+                if compression.replace(value).is_some() {
+                    eprintln!("{exe}: cannot set multiple compression levels");
+                    exit(-1);
+                }
+                continue;
             } else {
                 eprintln!("{exe}: invalid compression value");
                 exit(-1);

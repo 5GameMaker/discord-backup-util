@@ -192,8 +192,11 @@ fn main() {
                         }
                     }
 
-                    println!("Added file {}", format!("{name}/{}", x.file_name().into_string().unwrap())
-                            .trim_start_matches('/'));
+                    println!(
+                        "Added file {}",
+                        format!("{name}/{}", x.file_name().into_string().unwrap())
+                            .trim_start_matches('/')
+                    );
                 } else {
                     walk(
                         x.path(),
