@@ -17,10 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: ningenMe/setup-rustup@v1.1.0
-    - uses: awalsh128/cache-apt-pkgs-action@v1
-      with:
-        packages: musl-tools mold gcc-mingw-w64 gcc-multilib gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 clang-13 llvm-13 lld-13 llvm-dev gcc-mingw-w64-i686-win32 gcc-mingw-w64-x86-64-win32
-        version: 1.0
+    - run: apt-get install -qq --yes --force-yes musl-tools mold gcc-mingw-w64 gcc-multilib gcc-mingw-w64-x86-64 gcc-mingw-w64-i686 clang-13 llvm-13 lld-13 llvm-dev gcc-mingw-w64-i686-win32 gcc-mingw-w64-x86-64-win32
     - run: cargo install cargo-xwin --locked
     - run: echo "XWIN_ARCH=x86,x86_64,aarch64,aarch" >> "$GITHUB_ENV"
 
