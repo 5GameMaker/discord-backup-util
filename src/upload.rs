@@ -278,7 +278,9 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
 
     head.edit(&config.webhook, "Publishing artifact...", log);
 
-    let delete_file = |x: &mut PathBuf| drop(fs::remove_file(x).ok());
+    let delete_file = |x: &mut PathBuf| {
+        let _ = fs::remove_file(x).ok();
+    };
 
     let mut script_path = Defer::new(temp_path(), delete_file);
     let mut script_file = Rc::new(Mutex::new(

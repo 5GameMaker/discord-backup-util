@@ -64,15 +64,6 @@ impl Message {
             std::thread::sleep(Duration::from_secs(10));
         }
     }
-
-    pub fn reply<L: Logger>(
-        &self,
-        hook: &Webhook,
-        message: impl Fn(MessageBuilder) -> MessageBuilder,
-        logger: &mut L,
-    ) -> Message {
-        hook.send(message, logger)
-    }
 }
 
 struct ApiMessage {
