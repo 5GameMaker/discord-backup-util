@@ -18,6 +18,7 @@ A tool that backs up whatever you need to Discord.
 - Setup a cron job/systemd service to start `discord-backup-util` on boot.
 - Password-protect the artifacts (they are being uploaded to Discord of all places after all).
 - Rethink your life choices of why are you backing up your infrastructure to Discord.
+- Blame Discord for making upload limit x2.5 times less.
 
 ## Building for 32-bit platforms
 
