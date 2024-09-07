@@ -5,10 +5,7 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
     rc::Rc,
-    sync::{
-        atomic::{AtomicU64, AtomicUsize},
-        Mutex,
-    },
+    sync::{atomic::AtomicU64, Mutex},
 };
 
 use zip::{write::FileOptions, ZipWriter};
@@ -22,14 +19,15 @@ use crate::{
 };
 
 fn upload_chunked(
+    block_size: u8,
     webhook: &Webhook,
     mut file: impl Read,
     name: impl Fn(usize) -> String,
     uploaded: impl Fn(Message, usize) -> std::io::Result<()>,
     log: &mut impl Logger,
 ) -> std::io::Result<usize> {
-    const CHUNK_SIZE: usize = 1000 * 1000 * 25;
-    let mut buffer = vec![0u8; CHUNK_SIZE];
+    let chunk_size: usize = 1000 * 1000 * block_size as usize;
+    let mut buffer = vec![0u8; chunk_size];
     let mut i = 0;
 
     loop {
@@ -37,7 +35,7 @@ fn upload_chunked(
 
         let mut end = false;
 
-        while ptr < CHUNK_SIZE {
+        while ptr < chunk_size {
             match file.read(&mut buffer[ptr..]) {
                 Ok(len) => {
                     ptr += len;
@@ -53,7 +51,7 @@ fn upload_chunked(
             }
         }
 
-        if ptr == CHUNK_SIZE || end {
+        if ptr == chunk_size || end {
             uploaded(
                 webhook.send(|x| x.file(name(i), buffer[0..ptr].to_vec()), log),
                 i,
@@ -308,6 +306,7 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
     }
 
     let chunks = match upload_chunked(
+        config.block_size,
         &config.webhook,
         file,
         |i| format!("chunk_{i}.zip"),
@@ -376,6 +375,7 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
         let message_id = Rc::new(AtomicU64::default());
 
         match upload_chunked(
+            config.block_size,
             &config.webhook,
             &mut *script_file.lock().unwrap(),
             |i| format!("script_{lol}_{i}.zip"),

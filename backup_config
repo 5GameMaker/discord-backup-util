@@ -2,6 +2,9 @@ webhook <url>
 every 6 hours
 #password noaccesslol
 
+# Line below will work until Discord lowers the limit again
+#block-size 25
+
 # Script below is being executed in a temporary directory that is then zipped and sent in chunks
 
 #!/bin/bash

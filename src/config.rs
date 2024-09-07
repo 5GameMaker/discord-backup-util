@@ -11,6 +11,7 @@ pub struct Config {
     pub delay: Duration,
     pub password: Option<String>,
     pub compression_level: i64,
+    pub block_size: u8,
 }
 
 struct TimeColumn {
@@ -93,6 +94,7 @@ pub fn parse_args() -> Config {
     let mut delay = None;
     let mut password = None;
     let mut compression = None;
+    let mut block_size = None;
 
     while let Some(x) = lines.peek() {
         let x = x.trim();
@@ -127,6 +129,19 @@ pub fn parse_args() -> Config {
                 continue;
             } else {
                 eprintln!("{exe}: invalid compression value");
+                exit(-1);
+            }
+        }
+
+        if x.starts_with("block-size ") {
+            if let Ok(value) = x.split_once(' ').unwrap().1.parse::<u8>() {
+                if block_size.replace(value).is_some() {
+                    eprintln!("{exe}: cannot set multiple block sizes");
+                    exit(-1);
+                }
+                continue;
+            } else {
+                eprintln!("{exe}: invalid block size");
                 exit(-1);
             }
         }
@@ -235,6 +250,7 @@ pub fn parse_args() -> Config {
             }
         },
         compression_level: compression.unwrap_or(10),
+        block_size: block_size.unwrap_or(10),
         shell,
         script,
         password,
