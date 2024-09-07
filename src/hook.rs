@@ -86,6 +86,10 @@ impl Webhook {
         Self(url)
     }
 
+    pub fn url(&self) -> &str {
+        &self.0
+    }
+
     /// Send a message.
     ///
     /// Will try indefinitely until success.

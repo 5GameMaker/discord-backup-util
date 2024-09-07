@@ -4,11 +4,68 @@ use std::{
     os::unix::fs::MetadataExt,
     path::PathBuf,
     process::{Command, Stdio},
+    rc::Rc,
+    sync::{
+        atomic::{AtomicU64, AtomicUsize},
+        Mutex,
+    },
 };
 
 use zip::{write::FileOptions, ZipWriter};
 
-use crate::{config::Config, log::Logger, temp::temp_path, Defer};
+use crate::{
+    config::Config,
+    hook::{Message, Webhook},
+    log::Logger,
+    temp::temp_path,
+    Defer,
+};
+
+fn upload_chunked(
+    webhook: &Webhook,
+    mut file: impl Read,
+    name: impl Fn(usize) -> String,
+    uploaded: impl Fn(Message, usize) -> std::io::Result<()>,
+    log: &mut impl Logger,
+) -> std::io::Result<usize> {
+    const CHUNK_SIZE: usize = 1000 * 1000 * 25;
+    let mut buffer = vec![0u8; CHUNK_SIZE];
+    let mut i = 0;
+
+    loop {
+        let mut ptr = 0usize;
+
+        let mut end = false;
+
+        while ptr < CHUNK_SIZE {
+            match file.read(&mut buffer[ptr..]) {
+                Ok(len) => {
+                    ptr += len;
+                    if len == 0 {
+                        end = true;
+                        break;
+                    }
+                }
+                Err(why) => {
+                    log.error(&format!("Failed to upload artifact: {why}"));
+                    return Err(why);
+                }
+            }
+        }
+
+        if ptr == CHUNK_SIZE || end {
+            uploaded(
+                webhook.send(|x| x.file(name(i), buffer[0..ptr].to_vec()), log),
+                i,
+            )?;
+            if end {
+                break Ok(i);
+            }
+        }
+
+        i += 1;
+    }
+}
 
 pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
     log.info("Trying to initiate a backup...");
@@ -189,7 +246,9 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
         return;
     }
 
-    let mut file = match File::open(&*archive) {
+    drop(dir);
+
+    let file = match File::open(&*archive) {
         Ok(x) => x,
         Err(why) => {
             log.error(&format!("Failed to open temporary file: {why}"));
@@ -219,45 +278,141 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
         }
     }
 
-    const CHUNK_SIZE: usize = 1000 * 1000 * 10;
-    let mut buffer = vec![0u8; CHUNK_SIZE];
-    let mut chunks = 0u32;
-
     head.edit(&config.webhook, "Publishing artifact...", log);
 
-    loop {
-        chunks += 1;
-        let mut ptr = 0usize;
+    let delete_file = |x: &mut PathBuf| drop(fs::remove_file(x).ok());
 
-        let mut end = false;
-
-        while ptr < CHUNK_SIZE {
-            match file.read(&mut buffer[ptr..]) {
-                Ok(len) => {
-                    ptr += len;
-                    if len == 0 {
-                        end = true;
-                        break;
-                    }
-                }
-                Err(why) => {
-                    log.error(&format!("Failed to upload artifact: {why}"));
-                    head.edit(&config.webhook, "Upload failed", log);
-                    continue;
-                }
+    let mut script_path = Defer::new(temp_path(), delete_file);
+    let mut script_file = Rc::new(Mutex::new(
+        match File::options()
+            .write(true)
+            .truncate(true)
+            .create_new(true)
+            .open(&*script_path)
+        {
+            Ok(x) => x,
+            Err(why) => {
+                log.error(&format!("Failed to create download script: {why}"));
+                head.edit(&config.webhook, "Failed to create download script", log);
+                return;
             }
+        },
+    ));
+
+    if let Err(why) = script_file.lock().unwrap()
+        .write_all(format!(r#"dl(){{ curl -f -L "$(curl -f -L "{}/messages/$1"|grep -Eo '"url":"[^"]+"'|grep -Eo 'https[^"]+')">>dl_backup.zip;if [ ! $? -eq 0 ];then sleep 5;dl "$1";fi }};printf "">dl_backup.zip"#, config.webhook.url()).as_bytes())
+    {
+        log.error(&format!("Failed to create download script: {why}"));
+        head.edit(&config.webhook, "Failed to create download script", log);
+        return;
+    }
+
+    let chunks = match upload_chunked(
+        &config.webhook,
+        file,
+        |i| format!("chunk_{i}.zip"),
+        |msg, _| {
+            script_file
+                .lock()
+                .unwrap()
+                .write_all(format!(";dl {}", msg.id.unwrap()).as_bytes())
+        },
+        log,
+    ) {
+        Ok(x) => x + 1,
+        Err(why) => {
+            log.error(&format!("Failed to upload artifact: {why}"));
+            head.edit(&config.webhook, "Failed to upload artifact", log);
+            return;
+        }
+    };
+
+    head.edit(&config.webhook, "Uploading download script...", log);
+    config.webhook.send(|x| x.content(":warning: Do not manually download files below! :warning:\n\nThose are for the download script."), log);
+
+    let mut lol = 0usize;
+
+    loop {
+        if let Err(why) = script_file.lock().unwrap().flush() {
+            log.error(&format!("Failed to upload download script: {why}"));
+            head.edit(&config.webhook, "Failed to upload download script", log);
+            return;
         }
 
-        if ptr == CHUNK_SIZE {
-            head.reply(
-                &config.webhook,
-                |x| x.file(format!("chunk_{chunks}.zip"), buffer[0..ptr].to_vec()),
-                log,
-            );
-            if end {
+        script_file = Rc::new(Mutex::new(match File::open(&*script_path) {
+            Ok(x) => x,
+            Err(why) => {
+                log.error(&format!("Failed to upload download script: {why}"));
+                head.edit(&config.webhook, "Failed to upload download script", log);
+                return;
+            }
+        }));
+
+        let overflow_path = Defer::new(temp_path(), delete_file);
+        let overflow_file = Rc::new(Mutex::new(
+            match File::options()
+                .write(true)
+                .truncate(true)
+                .create_new(true)
+                .open(&*overflow_path)
+            {
+                Ok(x) => x,
+                Err(why) => {
+                    log.error(&format!("Failed to upload download script: {why}"));
+                    head.edit(&config.webhook, "Failed to upload download script", log);
+                    return;
+                }
+            },
+        ));
+
+        if let Err(why) = overflow_file.lock().unwrap()
+            .write_all(format!(r#"TFILE=mktemp;dl(){{ curl -f -L "$(curl -f -L "{}/messages/$1"|grep -Eo '"url":"[^"]+"'|grep -Eo 'https[^"]+')">>$TFILE;if [ ! $? -eq 0 ];then sleep 5;dl "$1";fi }};printf "">$TFILE"#, config.webhook.url()).as_bytes())
+        {
+            log.error(&format!("Failed to upload download script: {why}"));
+            head.edit(&config.webhook, "Failed to upload download script", log);
+            return;
+        }
+
+        let message_id = Rc::new(AtomicU64::default());
+
+        match upload_chunked(
+            &config.webhook,
+            &mut *script_file.lock().unwrap(),
+            |i| format!("script_{lol}_{i}.zip"),
+            |msg, _| {
+                message_id.store(msg.id.unwrap().get(), std::sync::atomic::Ordering::SeqCst);
+                overflow_file
+                    .lock()
+                    .unwrap()
+                    .write_all(format!(";dl {}", msg.id.unwrap()).as_bytes())
+            },
+            log,
+        ) {
+            Ok(0) => {
+                config.webhook.send(|x| x.content(format!("Upload complete!\n\nTo automatically download the backup archive, use the following script:```sh\ncurl -f -L \"$(curl -f -L \"{}/messages/{}\" | grep -Eo '\"url\":\"[^\"]+\"' | grep -Eo 'https[^\"]+')\" | sh -\n```\n\nMake sure `curl` and `grep` are installed.", config.webhook.url(), message_id.load(std::sync::atomic::Ordering::SeqCst))), log);
                 break;
             }
+            Err(why) => {
+                log.error(&format!("Failed to upload download script: {why}"));
+                head.edit(&config.webhook, "Failed to upload download script", log);
+                return;
+            }
+            _ => (),
         }
+
+        if let Err(why) = overflow_file
+            .lock()
+            .unwrap()
+            .write_all(r#";sh $TFILE;rm $TFILE"#.as_bytes())
+        {
+            log.error(&format!("Failed to upload download script: {why}"));
+            head.edit(&config.webhook, "Failed to upload download script", log);
+            return;
+        }
+
+        script_path = overflow_path;
+
+        lol += 1;
     }
 
     head.edit(&config.webhook, format!("Backup completed successfully.\n\nTo assemble the original archive, download all {chunks} chunks and concatenate them into a single file"), log);
