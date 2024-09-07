@@ -1,6 +1,7 @@
 use std::{
     fs::{self, File},
     io::{Read, Write},
+    os::unix::fs::MetadataExt,
     path::PathBuf,
     process::{Command, Stdio},
 };
@@ -182,6 +183,12 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
 
     drop(script);
 
+    if let Err(why) = zip.finish() {
+        log.error(&format!("Failed to contruct a zip archive: {why}"));
+        head.edit(&config.webhook, "Failed to finalize a zip archive", log);
+        return;
+    }
+
     let mut file = match File::open(&*archive) {
         Ok(x) => x,
         Err(why) => {
@@ -191,13 +198,28 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
         }
     };
 
-    if let Err(why) = zip.finish() {
-        log.error(&format!("Failed to contruct a zip archive: {why}"));
-        head.edit(&config.webhook, "Failed to finalize a zip archive", log);
-        return;
+    let volumes = ["B", "KiB", "MiB", "GiB", "TiB"];
+    match file.metadata() {
+        Ok(x) => {
+            let mut volume = 0;
+            let mut size = x.size() as f32;
+            while size >= 1024.0 && volume < volumes.len() - 1 {
+                size /= 1024.0;
+                volume += 1;
+            }
+            log.info(&format!(
+                "Final archive size: {size:0.3}{}",
+                volumes[volume]
+            ));
+        }
+        Err(why) => {
+            log.error(&format!("Failed to fetch file metadata: {why}"));
+            head.edit(&config.webhook, "Failed to fetch file metadata", log);
+            return;
+        }
     }
 
-    const CHUNK_SIZE: usize = 1000 * 1000 * 25;
+    const CHUNK_SIZE: usize = 1000 * 1000 * 10;
     let mut buffer = vec![0u8; CHUNK_SIZE];
     let mut chunks = 0u32;
 
@@ -209,8 +231,8 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
 
         let mut end = false;
 
-        while ptr != CHUNK_SIZE {
-            match file.read(&mut buffer) {
+        while ptr < CHUNK_SIZE {
+            match file.read(&mut buffer[ptr..]) {
                 Ok(len) => {
                     ptr += len;
                     if len == 0 {
@@ -226,13 +248,15 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
             }
         }
 
-        if ptr == CHUNK_SIZE || end {
+        if ptr == CHUNK_SIZE {
             head.reply(
                 &config.webhook,
-                move |x| x.file(format!("chunk_{chunks}.zip"), buffer[0..ptr].to_vec()),
+                |x| x.file(format!("chunk_{chunks}.zip"), buffer[0..ptr].to_vec()),
                 log,
             );
-            break;
+            if end {
+                break;
+            }
         }
     }
 

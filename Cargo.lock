@@ -156,7 +156,7 @@ dependencies = [
 
 [[package]]
 name = "discord-backup-util"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "minreq",
  "rand",
