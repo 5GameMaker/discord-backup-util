@@ -1,12 +1,16 @@
 use std::{
     fs::{self, File},
     io::{Read, Write},
-    os::unix::fs::MetadataExt,
     path::PathBuf,
     process::{Command, Stdio},
     rc::Rc,
     sync::{atomic::AtomicU64, Mutex},
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::MetadataExt;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
 
 use zip::{write::FileOptions, ZipWriter};
 
@@ -259,7 +263,16 @@ pub fn upload<'a, L: Logger>(config: &'a Config, log: &'a mut L) {
     match file.metadata() {
         Ok(x) => {
             let mut volume = 0;
-            let mut size = x.size() as f32;
+            let mut size = {
+                #[cfg(unix)]
+                {
+                    x.size()
+                }
+                #[cfg(windows)]
+                {
+                    x.file_size()
+                }
+            } as f32;
             while size >= 1024.0 && volume < volumes.len() - 1 {
                 size /= 1024.0;
                 volume += 1;
